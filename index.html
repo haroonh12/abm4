@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Invoice Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Basic CSS - expand as needed */
+        .invoice-container {
+            width: 95%;
+            margin: 20px auto;
+            font-size: 15px;
+            line-height: normal;
+        }
+    
+        .header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .company-info {
+            flex: 2; /* takes 2 parts */
+        }
+
+        .invoice-info {
+            flex: 1; /* takes 1 part */
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+        .total-section, .tax-summary {
+            text-align: right;
+            margin-top: 10px;
+        }
+        .input-section label {
+            display: block;
+            margin-bottom: 5px; 
+        }
+        .input-section input[type="text"],
+        .input-section input[type="number"],
+        .input-section select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .input-section button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .company-info1 {
+            display: grid;
+            grid-template-columns: max-content auto;
+            gap: 6px 16px; /* row gap, column gap */
+            line-height: 1.6;
+        }
+
+        .company-info1 label {
+            font-weight: normal;
+        }
+        .bold-text {
+            font-weight: bold;
+        }
+
+        @media print {
+            input, button, .no-print {
+            display: none !important;
+            }
+        }
+
+        .hr-line {
+            border: 2px solid rgb(97, 95, 95);
+            border-top: 1px solid #323131;
+            margin: 20px auto;
+        }
+
+        .form-box {
+            border: 2px solid #4A90E2; /* Nice blue border */
+            border-radius: 8px;         /* Rounded corners */
+            padding: 10px 15px;
+            display: inline-block;
+            background-color: #f5faff;  /* Light blue background */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow */
+            font-family: Arial, sans-serif;
+
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* 4 equal columns */
+            gap: 20px; /* space between columns */
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 10px;
+            background-color: #f0f0f0;
+            font-size: 10px;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="invoice-container">
+    <div class="input-section">
+        <p style="font-size: 24px; font-weight: bold;">Enter Invoice Details</p>
+    <div class="form-box">
+        <label for="IRN">IRN:</label>
+        <input type="text" id="irn">
+
+        <label for="ackNo">ACK NO:</label>
+        <input type="text" id="ackNo">
+
+        <label for="ackDate">ACK Date:</label>
+        <input type="text" id="ackDate">
+
+        <label for="customerName">Customer Name:</label>
+        <input type="text" id="customerName">
+
+        <label for="customerAddress">Customer Address:</label>
+        <input type="text" id="customerAddress">
+
+        <label for="phone">Phone:</label>
+        <input type="text" id="phone">
+
+        <label for="email">Email:</label>
+        <input type="text" id="email">
+
+        <label for="custGst">Cust. GST:</label>
+        <input type="text" id="custGst">
+
+        <label for="shipTo">Ship To:</label>
+        <input type="text" id="shipTo">
+
+        <label for="invoiceNumber">Invoice Number:</label>
+        <input type="text" id="invoiceNumber">
+
+        <label for="invoiceDate">Invoice Date:</label>
+        <input type="date" id="invoiceDate">
+
+        <label for="suppRef">Supplier's Ref.:</label>
+        <input type="text" id="suppRef">
+
+        <label for="companyPan">Company's PAN.:</label>
+        <input type="text" id="companyPan">
+
+        <label for="companySelect">Select Company:</label>
+        <select id="companySelect">
+        <option value="ABM4">ABM4 TRADES</option>
+        <option value="b2">B2 SOLUTIONS</option>
+        <option value="c3">C3 INDUSTRIES</option>
+        </select>
+        </div>
+        <p style="font-size: 24px; font-weight: bold;">Invoice Items</p>
+        <div id="items-container">
+        </div>
+        <button type="button" onclick="addItem()">Add Item</button>
+        <button type="button" onclick="generateInvoice()">Generate Invoice</button>
+        </div>
+
+<div id="print-content">
+    <div id="companyAddress" style="display:none;">
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <label></label> <span id="company-address"></span>
+            </div>
+            <h2 class="text-xl font-bold text-center flex-grow">Proforma Invoice</h2>
+            <div class="text-right">
+            <img src="data:image/png;base64,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" alt="Logo" class="w-28 h-auto mb-2">
+            <p><strong>GST Number:</strong> 32AAAFW9036C1ZH <br>Phone No. 04846648888</p>
+            </div>
+        </div>
+    </div>
+    <hr class="hr-line">
+    <div id="invoice" style="display:none;">
+        <div class="header">
+            <div class="company-info">
+                <div class="company-info1">
+                    <label>IRN</label> <span id="invoice-irn" class="bold-text"></span>
+                    <label>ACK NO</label> <span id="invoice-ackno" class="bold-text"></span>
+                    <label>ACK Date</label> <span id="invoice-ackdate" class="bold-text"></span>
+                    <label>Cust.Name</label> <span id="invoice-customer-name" class="bold-text"></span>
+                    <label>Address</label> <span id="invoice-customer-address" class="bold-text"></span>
+                    <label>Phone</label> <span id="invoice-phone" class="bold-text"></span>
+                </div>
+            </div>
+            <div class="invoice-info">
+                <div class="company-info1">
+                <label>Invoice Number</label> <span id="invoice-number" class="bold-text"></span>
+                <label>Date</label> <span id="invoice-date" class="bold-text"></span>
+                <label>Supplier's Ref</label> <span id="invoice-supref" class="bold-text"></span>
+                <label>Email</label> <span id="invoice-email" class="bold-text"></span>
+                <label>Cust. GST</label> <span id="invoice-custgst" class="bold-text"></span>
+                <label>Ship To</label> <span id="invoice-shipto" class="bold-text"></span>
+                </div>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Sl. No</th>
+                    <th>Description of Goods</th>
+                    <th>HSN/SAC</th>
+                    <th>GST Rate (%)</th>
+                    <th>Rate (₹)</th>
+                    <th>Qty</th>
+                    <th>Disc (%)</th>
+                    <th>Taxable Value (₹)</th>
+                    <th>Tax (₹)</th>
+                    <th>Total (₹)</th>
+                </tr>
+            </thead>
+            <tbody id="invoice-items">
+                </tbody>
+        </table>
+
+        <div class="total-section">
+            <p>Subtotal: ₹ <span id="invoice-subtotal">0.00</span></p>
+            <h3><b>Grand Total: ₹ </b><span id="invoice-grand-total" class="bold-text">0.00</span></h3>
+            <h3><b>Amount In Words: </b><span id="invoice-grand-total-word" class="bold-text"></span></h3>
+        </div>
+
+        <div class="tax-summary text-center">
+            <h3><b>Tax Summary</b></h3>
+            <table id="tax-calculation">
+                <thead>
+                    <tr>
+                        <th>Tax Type</th>
+                        <th>Rate (%)</th>
+                        <th>Taxable Value (₹)</th>
+                        <th>Amount (₹)</th>
+                    </tr>
+                </thead>
+                <tbody id="tax-details">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    
+        <div class="flex justify-between mt-6">
+            <!-- Company's PAN on Left -->
+            <div class="w-1/2 text-left">
+                <label>Company's PAN</label><span id="company-pan"></span>
+            </div>
+        </div>
+          <!-- Declaration and Bank Details Section -->
+        <div class="flex justify-between mt-6">
+        <!-- Declaration on Left -->
+            <div class="w-1/2 text-left">
+                <p><strong>Declaration</strong></p>
+                <p>We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.</p>
+            </div>
+      
+        <!-- Bank Details on Right -->
+            <div class="w-1/2 text-right">
+                <p><strong>Bank Details:</strong></p>
+                <p>Account Number: 67181419710</p>
+                <p>IFSC Code: SBIN0070782</p>
+                <p>Bank Name: STATE BANK OF INDIA</p>
+            </div>
+        </div>
+        
+      <!-- For ABM4 TRADES Section -->
+      <hr class="hr-line">
+        <div class="flex justify-end mt-1">
+            <div class="text-right">
+                <label>For </label><span id="for-company"></span>
+             </div>
+        </div>
+      
+      <!-- Customer's Seal and Signature, Authorised Signatory -->
+        <div class="flex justify-between mt-16">
+            <div>
+                <p><strong>Customer's Seal and Signature</strong></p>
+            </div>
+            <div class="text-right">
+                <p><strong>Authorised Signatory</strong></p>
+            </div>
+        </div>
+      <hr class="hr-line">
+      <!-- Footer: Computer Generated Invoice and Company Address -->
+        <div class="mt-6 text-center">
+            <p><strong>SUBJECT TO ERNAKULAM JURISDICTION</strong></p>
+            <p>This is a Computer Generated Invoice</p>
+        </div>
+        <div class="footer">
+            <p>HO 49/195A1 GROUND FLOOR, RAGAVANPILLAI MEMORIAL BUILDING, PUNNAKKAL ELAMAKKARA, <br> KOCHI, KERALA<br> Phone: 04846648888, GSTIN: 32AAAFW9036C1ZH</p>
+        </div>
+      
+        <div class="flex justify-end gap-4 no-print">
+            <button onclick="downloadPDF()" class="bg-green-600 text-white px-4 py-2 rounded">Download PDF</button>
+        </div>
+    
+</div>
+</div>
+
+    <script>
+        let itemCount = 0;
+        const itemsContainer = document.getElementById('items-container');
+        const invoiceItemsTable = document.getElementById('invoice-items');
+        const taxDetailsTableBody = document.getElementById('tax-details');
+
+        function addItem() {
+            itemCount++;
+            const newItemDiv = document.createElement('div');
+            newItemDiv.innerHTML = `
+                <h3><b>Item ${itemCount}</b></h3>
+                <div class="invoice-container">
+                <div class="input-section">
+                <div class="form-box">
+                <label for="description_${itemCount}">Description:</label>
+                <input type="text" id="description_${itemCount}">
+
+                <label for="hsnSac_${itemCount}">HSN/SAC:</label>
+                <input type="text" id="hsnSac_${itemCount}">
+
+                <label for="gstRate_${itemCount}">GST Rate (%):</label>
+                <input type="number" id="gstRate_${itemCount}" value="0">
+
+                <label for="rate_${itemCount}">Rate (₹):</label>
+                <input type="number" id="rate_${itemCount}" value="0">
+
+                <label for="qty_${itemCount}">Quantity:</label>
+                <input type="number" id="qty_${itemCount}" value="1">
+
+                <label for="discount_${itemCount}">Discount (%):</label>
+                <input type="number" id="discount_${itemCount}" value="0">
+
+                <label for="taxType_${itemCount}">Tax Type:</label>
+                <select id="taxType_${itemCount}">
+                    <option value="none">None</option>
+                    <option value="igst">IGST</option>
+                    <option value="cgstsgst">CGST + SGST</option>
+                </select></div></div></div>
+            `;
+            itemsContainer.appendChild(newItemDiv);
+        }
+
+        function calculateItemTotal(rate, qty, discount) {
+            const discountedRate = rate * (1 - discount / 100);
+            return discountedRate * qty;
+        }
+
+        function generateInvoice() {
+            
+            const customerName = document.getElementById('customerName').value;
+            const customerAddress = document.getElementById('customerAddress').value;
+            const invoiceNumber = document.getElementById('invoiceNumber').value;
+            const invoiceDate = document.getElementById('invoiceDate').value;
+            const supRef = document.getElementById('suppRef').value;
+            const irn = document.getElementById('irn').value;
+            const ackNo = document.getElementById('ackNo').value;
+            const ackDate = document.getElementById('ackDate').value;
+            const phone = document.getElementById('phone').value;
+            const email = document.getElementById('email').value;
+            const custGst = document.getElementById('custGst').value;
+            const shipTo = document.getElementById('shipTo').value;
+            const companySelect = document.getElementById("companySelect").value;
+            const companySelectElement = document.getElementById("companySelect");
+            const selectedCompany = companySelectElement.options[companySelectElement.selectedIndex].text;
+            const companyPan = document.getElementById("companyPan").value;
+            const addresses = {
+                                ABM4: `ABM4 TRADES <br> 35/1587 GROUND FLOOR <br>RAGAVANPILLAI MEMORIAL<br> BUILDING, PUNNAKKAL`,
+                                b2: `B2 SOLUTIONS <br> 22/345 SECOND FLOOR <br>TECH TOWER<br> INFOPARK ROAD, KOCHI`,
+                                c3: `C3 INDUSTRIES <br> 99/778 FIRST FLOOR <br>INNOVATION BLOCK<br> INDUSTRIAL AREA, THRISSUR`
+                                };
+
+            document.getElementById('for-company').textContent = selectedCompany;
+            document.getElementById('company-address').innerHTML = addresses[companySelect];
+            document.getElementById('invoice-number').textContent = ": " + invoiceNumber;
+            document.getElementById('invoice-date').textContent = ": " + invoiceDate;
+            document.getElementById('invoice-customer-name').textContent = ": " + customerName;
+            document.getElementById('invoice-customer-address').textContent = ": " + customerAddress;
+            document.getElementById('invoice-irn').textContent = ": " + irn;
+            document.getElementById('invoice-ackno').textContent = ": " + ackNo;
+            document.getElementById('invoice-ackdate').textContent = ": " + ackDate;
+            document.getElementById('invoice-phone').textContent = ": " + phone;
+            document.getElementById('invoice-email').textContent = ": " + email;
+            document.getElementById('invoice-custgst').textContent = ": " + custGst;
+            document.getElementById('invoice-shipto').textContent = ": " + shipTo;
+            document.getElementById('invoice-supref').textContent = ": " + supRef;
+            document.getElementById('company-pan').textContent = ": " + companyPan;
+
+            invoiceItemsTable.innerHTML = ''; // Clear previous items
+            let subtotal = 0;
+            let totalTaxAmount = 0;
+            const taxSummary = {};
+
+            for (let i = 1; i <= itemCount; i++) {
+                const description = document.getElementById(`description_${i}`).value;
+                const hsnSac = document.getElementById(`hsnSac_${i}`).value;
+                const gstRate = parseFloat(document.getElementById(`gstRate_${i}`).value);
+                const rate = parseFloat(document.getElementById(`rate_${i}`).value);
+                const qty = parseInt(document.getElementById(`qty_${i}`).value);
+                const discount = parseFloat(document.getElementById(`discount_${i}`).value);
+                const taxType = document.getElementById(`taxType_${i}`).value;
+
+                const taxableValue = calculateItemTotal(rate, qty, discount);
+                const taxAmount = (taxableValue * gstRate) / 100;
+                const itemTotal = taxableValue + taxAmount;
+
+                subtotal += taxableValue;
+                totalTaxAmount += taxAmount;
+
+                const newRow = invoiceItemsTable.insertRow();
+                newRow.insertCell().textContent = i;
+                newRow.insertCell().textContent = description;
+                newRow.insertCell().textContent = hsnSac;
+                newRow.insertCell().textContent = gstRate.toFixed(2);
+                newRow.insertCell().textContent = rate.toFixed(2);
+                newRow.insertCell().textContent = qty;
+                newRow.insertCell().textContent = discount.toFixed(2);
+                newRow.insertCell().textContent = taxableValue.toFixed(2);
+                newRow.insertCell().textContent = taxAmount.toFixed(2);
+                newRow.insertCell().textContent = itemTotal.toFixed(2);
+
+                // Update tax summary
+                if (taxType === 'igst') {
+                    taxSummary['IGST'] = (taxSummary['IGST'] || 0) + taxAmount;
+                } else if (taxType === 'cgstsgst') {
+                    const cgstAmount = taxAmount / 2;
+                    const sgstAmount = taxAmount / 2;
+                    taxSummary['CGST'] = (taxSummary['CGST'] || 0) + cgstAmount;
+                    taxSummary['SGST'] = (taxSummary['SGST'] || 0) + sgstAmount;
+                }
+            }
+
+            document.getElementById('invoice-subtotal').textContent = subtotal.toFixed(2);
+            document.getElementById('invoice-grand-total').textContent = (subtotal + totalTaxAmount).toFixed(2);
+            let total = (subtotal + totalTaxAmount).toFixed(2);
+            let amountInWords = convertNumberToWords(total);
+            document.getElementById('invoice-grand-total-word').innerText = amountInWords;
+
+            // Populate tax summary table
+            taxDetailsTableBody.innerHTML = '';
+            for (const taxName in taxSummary) {
+                const newRow = taxDetailsTableBody.insertRow();
+                newRow.insertCell().textContent = taxName;
+                newRow.insertCell().textContent = (taxName === 'CGST' || taxName === 'SGST' ? '9.00' : (Object.keys(taxSummary).length === 1 ? (taxSummary[taxName] * 100 / subtotal).toFixed(2) : (taxSummary[taxName] * 2 * 100 / subtotal).toFixed(2))); // Display 9.00 for CGST/SGST
+                newRow.insertCell().textContent = subtotal.toFixed(2); // Taxable value is the subtotal for simplicity here
+                newRow.insertCell().textContent = taxSummary[taxName].toFixed(2);
+            }
+
+            document.getElementById('invoice').style.display = 'block';
+            document.getElementById('companyAddress').style.display = 'block';
+
+        }
+
+        /* Set current date on load
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            document.getElementById('invoiceDate').value = `${day}/${month}/${year}`;
+        });*/
+
+        function downloadPDF() {
+            const invoiceContent = document.getElementById("print-content");
+            const clone = invoiceContent.cloneNode(true);
+            const noPrintElements = clone.querySelectorAll(".no-print");
+            noPrintElements.forEach(el => el.remove());
+            document.body.appendChild(clone);
+            clone.style.fontSize = "11px"
+            const opt = {
+                margin:       [0.3, 0.3, 0.3, 0.3], // top, left, bottom, right (in inches)
+                filename:     "invoice.pdf",
+                image:        { type: 'jpeg', quality: 5 },
+                html2canvas:  { scale: 4 }, // higher scale = better quality
+                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf()
+                .set(opt)
+                .from(clone)
+                .save()
+                .then(() => {
+                    document.body.removeChild(clone);
+                });
+        }
+
+        function convertNumberToWords(amount) {
+            const words = {
+                0: '', 1: 'One', 2: 'Two', 3: 'Three', 4: 'Four', 5: 'Five',
+                6: 'Six', 7: 'Seven', 8: 'Eight', 9: 'Nine', 10: 'Ten',
+                11: 'Eleven', 12: 'Twelve', 13: 'Thirteen', 14: 'Fourteen',
+                15: 'Fifteen', 16: 'Sixteen', 17: 'Seventeen', 18: 'Eighteen', 19: 'Nineteen',
+                20: 'Twenty', 30: 'Thirty', 40: 'Forty', 50: 'Fifty',
+                60: 'Sixty', 70: 'Seventy', 80: 'Eighty', 90: 'Ninety'
+            };
+
+            const units = ['', 'Thousand', 'Lakh', 'Crore'];
+
+            if (amount === 0) return 'Zero';
+
+            function numToWords(n) {
+                if (n <= 20) return words[n];
+                const tens = Math.floor(n / 10) * 10;
+                const ones = n % 10;
+                return words[tens] + (ones ? ' ' + words[ones] : '');
+            }
+
+            function getChunkWord(chunk, index) {
+                if (chunk === 0) return '';
+                return `${convertChunk(chunk)} ${units[index]} `;
+            }
+
+            function convertChunk(n) {
+                let str = '';
+                if (n > 99) {
+                str += words[Math.floor(n / 100)] + ' Hundred ';
+                n = n % 100;
+                }
+                if (n > 0) {
+                str += numToWords(n);
+                }
+                return str.trim();
+            }
+
+            let num = Math.floor(amount);
+            let paise = Math.round((amount - num) * 100);
+
+            const numStr = num.toString().padStart(9, '0');
+            const crore = parseInt(numStr.slice(0, 2), 10);
+            const lakh = parseInt(numStr.slice(2, 4), 10);
+            const thousand = parseInt(numStr.slice(4, 6), 10);
+            const hundreds = parseInt(numStr.slice(6, 9), 10);
+
+            let result = '';
+            result += getChunkWord(crore, 3);
+            result += getChunkWord(lakh, 2);
+            result += getChunkWord(thousand, 1);
+            result += convertChunk(hundreds);
+
+            result = result.trim() + ' Rupees';
+            if (paise > 0) {
+                result += ` and ${convertChunk(paise)} Paise`;
+            }
+
+            return result + ' Only';
+        }
+
+    </script>
+</body>
+</html>
